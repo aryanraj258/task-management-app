@@ -3,29 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Management App</title>
+  <title>TaskBuddy - Task Manager</title>
   <style>
-    * { box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { background: #f4f7f6; padding: 20px; max-width: 600px; margin: auto; }
-    h2 { color: #333; text-align: center; }
-    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-    input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-    button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    ul { list-style: none; padding: 0; }
-    li { background: white; padding: 12px; margin-bottom: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .completed { text-decoration: line-through; color: #888; }
-    .btn-delete { background: #dc3545; margin-left: 5px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0b0c10; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 800px; background: #12141c; border-radius: 8px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    
+    .header { text-align: center; margin-bottom: 25px; padding: 10px; }
+    .header h1 { color: #f5a623; font-size: 2.2rem; font-weight: bold; }
+    .header p { color: #8a8f9e; font-size: 0.9rem; margin-top: 5px; }
+
+    .input-section { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+    .input-group { flex: 1; display: flex; background: #1f2330; border-radius: 6px; overflow: hidden; border: 1px solid #2d3245; }
+    input[type="text"] { flex: 1; background: transparent; border: none; padding: 12px 15px; color: #fff; outline: none; font-size: 0.95rem; }
+    .btn-add { background: #f5a623; color: #000; border: none; padding: 0 20px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-add:hover { background: #e0951b; }
+
+    select { background: #ffffff; color: #333; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 500; cursor: pointer; outline: none; }
+
+    .task-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+    .task-card { background: #1a1d28; border: 1px solid #282c3d; padding: 15px 20px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .task-title { font-size: 0.95rem; color: #e1e4ed; }
+    .task-title.completed { text-decoration: line-through; color: #6c7283; }
+
+    .task-actions { display: flex; gap: 15px; }
+    .btn-action { background: transparent; border: none; color: #f5a623; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+    .btn-action:hover { text-decoration: underline; }
+
+    .counter { text-align: center; color: #8a8f9e; font-size: 0.85rem; margin: 15px 0; }
+    hr { border: 0; height: 1px; background: #232736; margin-bottom: 20px; }
+
+    .footer-action { display: flex; justify-content: center; }
+    .btn-clear { background: #ff4d4d; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-clear:hover { background: #e63939; }
   </style>
 </head>
 <body>
 
-  <h2>Task Management Application</h2>
-  <div class="input-group">
-    <input type="text" id="taskInput" placeholder="Enter new task...">
-    <button onclick="addTask()">Add Task</button>
-  </div>
+  <div class="container">
+    <div class="header">
+      <h1>TaskBuddy</h1>
+      <p>Your friendly task manager</p>
+    </div>
 
-  <ul id="taskList"></ul>
+    <div class="input-section">
+      <div class="input-group">
+        <input type="text" id="taskInput" placeholder="Enter your task" required>
+        <button class="btn-add" onclick="addTask()">Add Task</button>
+      </div>
+      <select id="prioritySelect">
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+        <option value="Low">Low</option>
+      </select>
+      <select id="categorySelect">
+        <option value="General">General</option>
+        <option value="Work">Work</option>
+        <option value="Personal">Personal</option>
+      </select>
+    </div>
+
+    <div class="task-list" id="taskList"></div>
+
+    <div class="counter" id="taskCounter">0 of 0 tasks completed</div>
+    <hr>
+
+    <div class="footer-action">
+      <button class="btn-clear" onclick="clearAllTasks()">Clear All Tasks</button>
+    </div>
+  </div>
 
   <script>
     async function fetchTasks() {
@@ -33,27 +79,48 @@
       const tasks = await res.json();
       const list = document.getElementById('taskList');
       list.innerHTML = '';
+      
+      let completedCount = 0;
+
       tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          <span class="${task.status === 'Completed' ? 'completed' : ''}">${task.title}</span>
-          <div>
-            <button onclick="toggleTask(${task.id})">${task.status === 'Pending' ? 'Done' : 'Undo'}</button>
-            <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+        if (task.status === 'Completed') completedCount++;
+
+        const card = document.createElement('div');
+        card.className = 'task-card';
+        card.innerHTML = `
+          <span class="task-title ${task.status === 'Completed' ? 'completed' : ''}">
+            ${task.title} (${task.priority || 'Medium'}, ${task.category || 'General'})
+          </span>
+          <div class="task-actions">
+            <button class="btn-action" onclick="toggleTask(${task.id})">
+              ${task.status === 'Completed' ? 'Undo' : 'Complete'}
+            </button>
+            <button class="btn-action" onclick="deleteTask(${task.id})">Delete</button>
           </div>
         `;
-        list.appendChild(li);
+        list.appendChild(card);
       });
+
+      document.getElementById('taskCounter').innerText = `${completedCount} of ${tasks.length} tasks completed`;
     }
 
     async function addTask() {
       const input = document.getElementById('taskInput');
+      const priority = document.getElementById('prioritySelect').value;
+      const category = document.getElementById('categorySelect').value;
+
       if (!input.value.trim()) return;
+
       await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: input.value })
+        body: JSON.stringify({ 
+          title: input.value,
+          priority: priority,
+          category: category
+        })
       });
+
       input.value = '';
       fetchTasks();
     }
@@ -68,7 +135,17 @@
       fetchTasks();
     }
 
+    async function clearAllTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      for (let task of tasks) {
+        await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
+      }
+      fetchTasks();
+    }
+
     fetchTasks();
   </script>
+
 </body>
 </html>
